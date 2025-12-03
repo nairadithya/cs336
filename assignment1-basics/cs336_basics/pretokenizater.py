@@ -1,6 +1,30 @@
 import os
 from typing import BinaryIO
 
+import regex as re
+from multiprocessing import Pool
+
+def merge(indices: list[int], pair: tuple[int, int], new_index: int) -> list[int]:  # @inspect indices, @inspect pair, @inspect new_index
+    """Return `indices`, but with all instances of `pair` replaced with `new_index`."""
+    new_indices = []  # @inspect new_indices
+    i = 0  # @inspect i
+    while i < len(indices):
+        if i + 1 < len(indices) and indices[i] == pair[0] and indices[i + 1] == pair[1]:
+            new_indices.append(new_index)
+            i += 2
+        else:
+            new_indices.append(indices[i])
+            i += 1
+    return new_indices
+
+def process_chunk(start, end):
+    f.seek(start)
+    chunk = f.read(end - start).decode("utf-8", errors="ignore")
+    pretokens = re.findall(PAT, chunk)
+    count_map = {}
+    for item in pretokens:
+        count_map[item] = count_map.get(item, 0) + 1
+    
 
 def find_chunk_boundaries(
     file: BinaryIO,
@@ -50,7 +74,7 @@ def find_chunk_boundaries(
 
 
 ## Usage
-with open(..., "rb") as f:
+with open("notes.org", "rb") as f:
     num_processes = 4
     boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
@@ -60,3 +84,25 @@ with open(..., "rb") as f:
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
         # Run pre-tokenization on your chunk and store the counts for each pre-token
+        PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""  
+        count_map = {}
+        alist = re.findall(PAT, chunk)
+        for item in alist:
+            key = bytes(item.encode("utf-8"))
+            count_map[key] = count_map.get(key, 0) + 1
+
+        print(count_map)
+
+        vocab_size = 300
+        tkn_count_map: dict[tuple[bytes, bytes], int] = {}
+        for pretoken in count_map:
+            for item in zip(pretoken, pretoken[1:]):
+                tkn_count_map[item] = tkn_count_map.get(item, 0) + 1 * count_map[pretoken]
+
+        # BPE    
+        vocab: dict[int, bytes] = {x: bytes(x) for x in range(256)}
+        for i in range(vocab_size):
+            pair = max(tkn_count_map, key=tkn_count_map.get)  # ty:ignore[no-matching-overload]
+            index1, index2 = pair
+            new_id = 256 + i
+            vocab[new_id] = vocab[index1] + vocab[index2]
