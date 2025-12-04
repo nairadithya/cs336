@@ -1,13 +1,45 @@
 import os
 from typing import BinaryIO
 
-import regex as re
+from collections import defaultdict
+from dataclasses import dataclass
+from abc import ABC
+import regex as re  # ty:ignore[unresolved-import]
+
 from multiprocessing import Pool
 
-def merge(indices: list[int], pair: tuple[int, int], new_index: int) -> list[int]:  # @inspect indices, @inspect pair, @inspect new_index
+# Taken from the handout
+class Tokenizer(ABC):
+    """Abstract interface for a tokenizer."""
+    def encode(self, string: str) -> list[int]:
+        raise NotImplementedError
+    def decode(self, indices: list[int]) -> str:
+        raise NotImplementedError
+
+@dataclass(frozen=True)
+class BPETokenizerParams:
+    """All you need to specify a BPETokenizer."""
+    vocab: dict[int, bytes]     # index -> bytes
+    merges: dict[tuple[int, int], int]  # index1,index2 -> new_index
+
+class BPETokenizer(Tokenizer):
+    """BPE tokenizer given a set of merges and a vocabulary."""
+    def __init__(self, params: BPETokenizerParams):
+        self.params = params
+    def encode(self, string: str) -> list[int]:
+        indices = list(map(int, string.encode("utf-8")))  
+        for pair, new_index in self.params.merges.items():  
+            indices = merge(indices, pair, new_index)
+        return indices
+    def decode(self, indices: list[int]) -> str:
+        bytes_list = list(map(self.params.vocab.get, indices))  
+        string = b"".join(bytes_list).decode("utf-8")  # @inspect string
+        return string
+
+def merge(indices: list[int], pair: tuple[int, int], new_index: int) -> list[int]:  
     """Return `indices`, but with all instances of `pair` replaced with `new_index`."""
-    new_indices = []  # @inspect new_indices
-    i = 0  # @inspect i
+    new_indices = []  
+    i = 0  
     while i < len(indices):
         if i + 1 < len(indices) and indices[i] == pair[0] and indices[i + 1] == pair[1]:
             new_indices.append(new_index)
@@ -17,20 +49,24 @@ def merge(indices: list[int], pair: tuple[int, int], new_index: int) -> list[int
             i += 1
     return new_indices
 
-def process_chunk(start, end):
-    f.seek(start)
-    chunk = f.read(end - start).decode("utf-8", errors="ignore")
-    pretokens = re.findall(PAT, chunk)
-    count_map = {}
-    for item in pretokens:
-        count_map[item] = count_map.get(item, 0) + 1
-    
+def train_bpe(string: str, num_merges: int) -> BPETokenizerParams:  
+    indices: list[int] = list(map(int, string.encode("utf-8")))  
+    merges: dict[tuple[int, int], int] = {}  
+    vocab: dict[int, bytes] = {x: bytes([x]) for x in range(256)}  
+    for i in range(num_merges):
+        counts = defaultdict(int)
+        for index1, index2 in zip(indices, indices[1:]):  
+            counts[(index1, index2)] += 1  
+        pair = max(counts, key=counts.get)  # ty:ignore[no-matching-overload]
+        index1, index2 = pair
+        new_index = 256 + i  
+        merges[pair] = new_index  # @inspect merges
+        vocab[new_index] = vocab[index1] + vocab[index2]  # @inspect vocab
+        indices = merge(indices, pair, new_index)  # @inspect indices
+    return BPETokenizerParams(vocab=vocab, merges=merges)
 
-def find_chunk_boundaries(
-    file: BinaryIO,
-    desired_num_chunks: int,
-    split_special_token: bytes,
-) -> list[int]:
+
+def find_chunk_boundaries(file: BinaryIO, desired_num_chunks: int, split_special_token: bytes,) -> list[int]:
     """
     Chunk the file into parts that can be counted independently.
     May return fewer chunks if the boundaries end up overlapping.
@@ -86,23 +122,23 @@ with open("notes.org", "rb") as f:
         # Run pre-tokenization on your chunk and store the counts for each pre-token
         PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""  
         count_map = {}
-        alist = re.findall(PAT, chunk)
-        for item in alist:
-            key = bytes(item.encode("utf-8"))
-            count_map[key] = count_map.get(key, 0) + 1
+        # Pre-tokenization
+        pretokens: list[str] = re.findall(PAT, chunk)
+        for item in pretokens:
+            count_map[item] = count_map.get(item, 0) + 1
 
-        print(count_map)
+def train_bpe_pretokenization(pretoken_sequences: list[str], count_map: dict[bytes, int], num_merges: int) -> BPETokenizerParams:
+    for pretoken in pretoken_sequences:
+        indices = list(map(int, pretoken.encode("utf-8")))
+        merges: dict[tuple[int,int], int] = {}
+        vocab: dict[int, bytes] = {x: bytes([x]) for x in range(256)}
+        counts = {}
+        for index1, index2 in zip(indices, indices[1:]):
+            counts[(index1, index2)] += counts.get((index1, index2), 0) + 1 * count_map[pretoken] 
+        pair = max(counts, key=counts.get)  # ty:ignore[no-matching-overload]
+        index1, index2 = pair
+        new_index = 256 + i  
+        merges[pair] = new_index  # @inspect merges
+        vocab[new_index] = vocab[index1] + vocab[index2]  # @inspect vocab
 
-        vocab_size = 300
-        tkn_count_map: dict[tuple[bytes, bytes], int] = {}
-        for pretoken in count_map:
-            for item in zip(pretoken, pretoken[1:]):
-                tkn_count_map[item] = tkn_count_map.get(item, 0) + 1 * count_map[pretoken]
 
-        # BPE    
-        vocab: dict[int, bytes] = {x: bytes(x) for x in range(256)}
-        for i in range(vocab_size):
-            pair = max(tkn_count_map, key=tkn_count_map.get)  # ty:ignore[no-matching-overload]
-            index1, index2 = pair
-            new_id = 256 + i
-            vocab[new_id] = vocab[index1] + vocab[index2]
