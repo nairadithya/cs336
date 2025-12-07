@@ -1,22 +1,22 @@
 
 # Table of Contents
 
-1.  [Handout](#org13dd2d2)
-    1.  [Problem Set 1 (unicode1)](#org0923e09)
-    2.  [Problem Set 2 (unicode2)](#org41ef07f)
-    3.  [Pretokenization](#org2f1b8b9)
-    4.  [Special Tokens](#org76801de)
-2.  [Readings](#org6b3e020)
-    1.  [Karpathy Video](#org6166b6a)
+1.  [Handout](#org8b1c72f)
+    1.  [Problem Set 1 (unicode1)](#org75b021d)
+    2.  [Problem Set 2 (unicode2)](#orgbf11be9)
+    3.  [Pretokenization](#org3a649b9)
+    4.  [Special Tokens](#org644cb99)
+2.  [Readings](#org7ef3234)
+    1.  [Karpathy Video](#org5c586b7)
 
 
 
-<a id="org13dd2d2"></a>
+<a id="org8b1c72f"></a>
 
 # Handout
 
 
-<a id="org0923e09"></a>
+<a id="org75b021d"></a>
 
 ## Problem Set 1 (unicode1)
 
@@ -38,7 +38,7 @@
     How strange it seems to be some kind of empty space.
 
 
-<a id="org41ef07f"></a>
+<a id="orgbf11be9"></a>
 
 ## Problem Set 2 (unicode2)
 
@@ -75,7 +75,7 @@ Some characters like emojis require multiple bytes to represent themselves in `u
 Unicode uses the last bit as a signal about how many bytes there are left.
 
 
-<a id="org2f1b8b9"></a>
+<a id="org3a649b9"></a>
 
 ## Pretokenization
 
@@ -84,7 +84,7 @@ Unicode uses the last bit as a signal about how many bytes there are left.
 3.  Refactored function into something that can work given just the start and end, had to do some global scoping
 
 
-<a id="org76801de"></a>
+<a id="org644cb99"></a>
 
 ## Special Tokens
 
@@ -113,16 +113,16 @@ Unicode uses the last bit as a signal about how many bytes there are left.
             else:
                 pretoken_sequences[pretoken] = list(pretoken.encode("utf-8"))
 
-3.  Had a really gnarly indentation error in my code. I wrote the counting step such that the max value would be fetched every iteration rather than at the end. Calling &rsquo;max&rsquo; so many times meant that my tests took about 35 minutes to complete. I thought that was normal until I read the docstring for the test saying it should take less than 1.5 seconds. Anyways it&rsquo;s fixed now and my speed is &asymp; 1.5 seconds now.
+3.  Had a really gnarly indentation error in my code. I wrote the counting step such that the max value would be fetched every iteration rather than at the end. Calling &rsquo;max&rsquo; so many times meant that my tests took about 35 minutes to complete. I thought that was normal until I read the docstring for the test saying it should take less than 1.5 seconds. Anyways it&rsquo;s fixed now and my speed is &asymp; 1.8 seconds now.
 4.  
 
 
-<a id="org6b3e020"></a>
+<a id="org7ef3234"></a>
 
 # Readings
 
 
-<a id="org6166b6a"></a>
+<a id="org5c586b7"></a>
 
 ## Karpathy Video
 
