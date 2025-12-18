@@ -4,12 +4,20 @@ import os
 from collections.abc import Iterable
 from typing import IO, Any, BinaryIO
 
-from cs336_basics.pretokenizater import run_train_bpe as bpe_train
-
 import numpy.typing as npt
 import torch
 from jaxtyping import Bool, Float, Int
-from torch import Tensor
+from torch import Tensor, nn
+
+from cs336_basics.train_tokenizer import run_train_bpe as bpe_train
+from cs336_basics.transformer import (
+    Embedding,
+    Linear,
+    PositionWiseFFN,
+    RMSNorm,
+    silu,
+    softmax,
+)
 
 
 def run_linear(
@@ -30,8 +38,9 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-
-    raise NotImplementedError
+    linear = Linear(d_in, d_out, weights, in_features)
+    linear.w = nn.Parameter(weights)
+    return linear(in_features)
 
 
 def run_embedding(
@@ -52,8 +61,9 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
-
-    raise NotImplementedError
+    embedding = Embedding(vocab_size, d_model)
+    embedding.E = nn.Parameter(weights)
+    return embedding(token_ids)
 
 
 def run_swiglu(
@@ -85,7 +95,17 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    w1 = Linear(d_ff, d_model, in_features)
+    w1.w = nn.Parameter(w1_weight)
+    w2 = Linear(d_model, d_ff, in_features)
+    w2.w = nn.Parameter(w2_weight)
+    w3 = Linear(d_model, d_ff, in_features)
+    w3.w = nn.Parameter(w3_weight)
+    swiglu = PositionWiseFFN(d_model, d_ffn=d_ff)
+    swiglu.w1 = w1
+    swiglu.w2 = w2
+    swiglu.w3 = w3
+    return swiglu(in_features)
 
 
 def run_scaled_dot_product_attention(
@@ -302,7 +322,7 @@ def run_transformer_lm(
         num_heads (int): Number of heads to use in multi-headed attention. `d_model` must be
             evenly divisible by `num_heads`.
         d_ff (int): Dimensionality of the feed-forward inner layer (section 3.3).
-        rope_theta (float): The RoPE $\Theta$ parameter.
+        rope_theta (float): The RoPE $Theta$ parameter.
         weights (dict[str, Tensor]):
             State dict of our reference implementation. {num_layers} refers to an
             integer between `0` and `num_layers - 1` (the layer index).
@@ -380,7 +400,9 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    raise NotImplementedError
+    rms = RMSNorm(d_model, eps)
+    rms.gain = nn.Parameter(weights)
+    return rms(in_features)
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
@@ -394,7 +416,7 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
-    raise NotImplementedError
+    return silu(x=in_features)
 
 
 def run_get_batch(
@@ -420,7 +442,9 @@ def run_get_batch(
     raise NotImplementedError
 
 
-def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
+def run_softmax(
+    in_features: Float[Tensor, " ..."], dim: int
+) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`
     of the input.
@@ -433,11 +457,12 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    return softmax(in_features, dim)
 
 
 def run_cross_entropy(
-    inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]
+    inputs: Float[Tensor, " batch_size vocab_size"],
+    targets: Int[Tensor, " batch_size"],
 ) -> Float[Tensor, ""]:
     """Given a tensor of inputs and targets, compute the average cross-entropy
     loss across examples.
@@ -454,7 +479,9 @@ def run_cross_entropy(
     raise NotImplementedError
 
 
-def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
+def run_gradient_clipping(
+    parameters: Iterable[torch.nn.Parameter], max_l2_norm: float
+) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
     Args:
