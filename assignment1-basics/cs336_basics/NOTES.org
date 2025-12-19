@@ -117,9 +117,20 @@ for pretoken in count_map:
 4. 
 ** Transformer Components
 *** Linear 
-Too easy
+Too easy, $Wx$
+#+begin_src python
+class Linear(nn.Module):
+    def __init__(self, in_features: int, out_features: int, device=None, dtype=None):
+        super().__init__()  # pyright: ignore[reportUnknownMemberType]
+        w = torch.empty(out_features, in_features)
+        var: float = 2 / (in_features + out_features)
+        std: float = var**0.5
+        _ = nn.init.trunc_normal_(tensor=w, std=std, mean=0, a=-3 * std, b=3 * std)
+        self.w: nn.Parameter = nn.Parameter(data=w, requires_grad=True)
 
-$Wx$
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.matmul(x, self.w.T)
+#+end_src
 * Readings
 ** Karpathy Video
 [[https://youtu.be/zduSFxRajkE][Let's build the GPT Tokenizer - YouTube]]
