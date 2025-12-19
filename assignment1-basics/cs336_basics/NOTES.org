@@ -116,6 +116,10 @@ for pretoken in count_map:
 3. Had a really gnarly indentation error in my code. I wrote the counting step such that the max value would be fetched every iteration rather than at the end. Calling 'max' so many times meant that my tests took about 35 minutes to complete. I thought that was normal until I read the docstring for the test saying it should take less than 1.5 seconds. Anyways it's fixed now and my speed is \approx 1.8 seconds now.
 4. 
 ** Transformer Components
+*** Linear 
+Too easy
+
+$Wx$
 * Readings
 ** Karpathy Video
 [[https://youtu.be/zduSFxRajkE][Let's build the GPT Tokenizer - YouTube]]
