@@ -15,6 +15,7 @@ from cs336_basics.transformer import (
     Linear,
     PositionWiseFFN,
     RMSNorm,
+    scaled_dot_product_attention,
     silu,
     softmax,
 )
@@ -126,7 +127,7 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    return scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -160,7 +161,7 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    return NotImplementedError
 
 
 def run_multihead_self_attention_with_rope(
@@ -442,9 +443,7 @@ def run_get_batch(
     raise NotImplementedError
 
 
-def run_softmax(
-    in_features: Float[Tensor, " ..."], dim: int
-) -> Float[Tensor, " ..."]:
+def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`
     of the input.
@@ -479,9 +478,7 @@ def run_cross_entropy(
     raise NotImplementedError
 
 
-def run_gradient_clipping(
-    parameters: Iterable[torch.nn.Parameter], max_l2_norm: float
-) -> None:
+def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
     Args:
